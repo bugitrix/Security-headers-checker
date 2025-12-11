@@ -1,0 +1,360 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Security Headers Checker</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-2: #4f46e5;
+      --good: #16a34a;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --shadow: 0 10px 30px rgba(16,24,40,0.08);
+      --glass: rgba(255,255,255,0.8);
+      --radius: 12px;
+      --maxw: 1100px;
+    }
+    html,body{height:100%}
+    body {
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#f8fafc 0%, #ffffff 100%);
+      margin: 0; padding: 28px; color:#0f172a;
+      display:flex; justify-content:center;
+    }
+    .wrap { width:100%; max-width:var(--maxw); }
+    header { margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    h1 { margin:0; font-size:20px; letter-spacing:-0.2px; }
+    p.lead { margin:4px 0 0 0; color:var(--muted); font-size:13px; }
+
+    .card { background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:14px; border:1px solid rgba(15,23,42,0.03); }
+    .controls { display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+    input[type="text"] { padding:12px 14px; font-size:15px; border-radius:10px; border:1px solid #e6e9ef; width:58%; min-width:220px; }
+    button { padding:10px 14px; font-size:15px; border-radius:10px; border: none; background:var(--accent); color:white; cursor:pointer; box-shadow: 0 6px 18px rgba(37,99,235,0.12); transition:transform .12s ease, box-shadow .12s ease; }
+    button:hover { transform:translateY(-2px); }
+    button.secondary { background:transparent; border:1px solid #e6e9ef; color:var(--muted); box-shadow:none; }
+    .small { font-size:13px; color:var(--muted); }
+
+    .row { display:flex; gap:12px; }
+    .col { flex:1; min-width:0; }
+    .badge { display:inline-block; padding:6px 8px; border-radius:999px; font-weight:700; font-size:12px; color:white; }
+    .badge.good { background:var(--good); }
+    .badge.warn { background:var(--warn); color:#222; }
+    .badge.bad  { background:var(--bad); }
+
+    .list { margin:8px 0 0 0; padding:0; list-style:none; display:block; }
+    .item { padding:12px; border-radius:10px; border:1px solid #f1f3f7; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; background:linear-gradient(180deg,#ffffff,#fbfdff); }
+    .title { font-weight:700; margin-bottom:6px; font-size:14px; }
+    .meta { color:var(--muted); font-size:13px; word-break:break-word; }
+
+    .section-title { font-size:15px; margin:0 0 8px 0; font-weight:800; display:flex; align-items:center; gap:10px; }
+    .details { margin-top:8px; font-size:13px; color:var(--muted); white-space:pre-wrap; }
+
+    .collapse { background:#fbfbfe; padding:10px; border-radius:8px; margin-top:8px; border:1px dashed #eef1fb; display:none; }
+
+    .actions { display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap; }
+    .icon-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; border:1px solid #eef2ff; background:linear-gradient(180deg,#ffffff,#fbfdff); cursor:pointer; }
+    .icon { font-weight:700; font-size:14px; color:var(--accent-2); }
+
+    .cookie-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .cookie-table th, .cookie-table td { text-align:left; padding:8px; border-bottom:1px solid #f1f3f7; vertical-align:top; }
+    .empty { color:var(--muted); }
+
+    footer { margin-top:18px; font-size:13px; color:var(--muted); text-align:center; }
+    .muted { color:var(--muted); }
+
+    /* small responsive */
+    @media (max-width:780px){
+      input[type="text"]{ width:100% }
+      .row{ flex-direction:column }
+      .col{ width:100% }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>🔒 Security Headers Checker</h1>
+        <p class="lead">Type a domain (example.com) and click <strong>Run</strong>. This tool only performs a safe HTTP GET.</p>
+      </div>
+      <div class="small">College Project — <span id="statusLight">Riya, Sukhveer</span></div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <input id="target" type="text" placeholder="example.com or https://example.com" />
+        <button id="runBtn">Run</button>
+        <button class="secondary" id="clearBtn">Clear</button>
+
+        <!-- action placeholders (appear after result) -->
+        <div style="margin-left:auto;" id="postActions"></div>
+      </div>
+      <div class="small" style="margin-top:10px;">Tip: you can use "example.com" or "https://example.com".</div>
+    </div>
+
+    <div id="reportArea">
+      <div class="card" id="summaryCard" style="display:none;">
+        <div class="row">
+          <div class="col">
+            <div class="section-title">Result</div>
+            <div class="small" id="finalUrl"></div>
+            <div style="margin-top:8px;">
+              <span class="badge good" id="statusBadge" style="display:none;"></span>
+              <span class="badge warn" id="statusWarn" style="display:none;"></span>
+            </div>
+            <div class="details" id="summaryDetails"></div>
+
+            <div class="actions" id="reportButtons" style="display:none;">
+              <div class="icon-btn" id="copyBtn" title="Copy formatted report">
+                <span class="icon">📋</span><span>Copy report</span>
+              </div>
+              <div class="icon-btn" id="downloadTxt" title="Download report as text">
+                <span class="icon">📥</span><span>Download TXT</span>
+              </div>
+              <div class="icon-btn" id="downloadJson" title="Download raw JSON">
+                <span class="icon">💾</span><span>Download JSON</span>
+              </div>
+            </div>
+
+          </div>
+          <div class="col" style="max-width:380px;">
+            <!-- <div class="section-title">Cookies</div> -->
+            <div id="cookieArea" class="small"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="presentCard" style="display:none;">
+        <div class="section-title">✅ Present security headers</div>
+        <ul class="list" id="presentList"></ul>
+      </div>
+
+      <div class="card" id="missingCard" style="display:none;">
+        <div class="section-title">❗ Missing / recommended headers</div>
+        <ul class="list" id="missingList"></ul>
+      </div>
+    </div>
+
+    <footer>
+      Tip: click any missing item to reveal description, impact and recommended fix.
+    </footer>
+  </div>
+
+<script>
+const runBtn = document.getElementById('runBtn');
+const clearBtn = document.getElementById('clearBtn');
+const targetInput = document.getElementById('target');
+const statusLight = document.getElementById('statusLight');
+const postActions = document.getElementById('postActions');
+
+function setStatus(t){ statusLight.textContent = t; }
+
+clearBtn.addEventListener('click', () => {
+  targetInput.value = '';
+  hideAll();
+  postActions.innerHTML = '';
+});
+
+function hideAll(){
+  document.getElementById('summaryCard').style.display = 'none';
+  document.getElementById('presentCard').style.display = 'none';
+  document.getElementById('missingCard').style.display = 'none';
+  document.getElementById('reportButtons').style.display = 'none';
+}
+
+runBtn.addEventListener('click', async () => {
+  const target = targetInput.value.trim();
+  if (!target){ alert('Please type a domain (e.g. example.com)'); return; }
+  setStatus('Sukhveer, Riya');
+  runBtn.disabled = true;
+  runBtn.textContent = 'Running...';
+  hideAll();
+  try {
+    const resp = await fetch('/run', {
+      method:'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ target })
+    });
+    const j = await resp.json();
+    if (!j.ok){ showError(j.error || 'Unknown error'); return; }
+    renderReport(j.report);
+  } catch (err) {
+    showError('Network error: ' + err);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run';
+    setStatus('Riya, Sukhveer');
+  }
+});
+
+function showError(msg){
+  document.getElementById('summaryCard').style.display = 'block';
+  document.getElementById('presentCard').style.display = 'none';
+  document.getElementById('missingCard').style.display = 'none';
+  document.getElementById('finalUrl').textContent = '';
+  document.getElementById('summaryDetails').textContent = 'Error: ' + msg;
+  document.getElementById('cookieArea').innerHTML = '';
+  postActions.innerHTML = '';
+}
+
+function renderReport(r){
+  // Summary area
+  document.getElementById('summaryCard').style.display = 'block';
+  document.getElementById('finalUrl').textContent = r.final_url || '(unknown)';
+  const statusBadge = document.getElementById('statusBadge');
+  const statusWarn = document.getElementById('statusWarn');
+  statusBadge.style.display = 'none'; statusWarn.style.display = 'none';
+  if (r.status_code >=200 && r.status_code <400){ statusBadge.style.display='inline-block'; statusBadge.textContent = 'HTTP ' + r.status_code; }
+  else { statusWarn.style.display='inline-block'; statusWarn.textContent = 'HTTP ' + (r.status_code || 'error'); }
+
+  const presentCount = Object.keys(r.found || {}).length;
+  const missingCount = Object.keys(r.missing || {}).length;
+  document.getElementById('summaryDetails').textContent = `${presentCount} tracked header(s) present — ${missingCount} missing or recommended.`;
+
+  
+
+  // Present list
+  const presentList = document.getElementById('presentList');
+  presentList.innerHTML = '';
+  if (presentCount === 0){ document.getElementById('presentCard').style.display='none'; }
+  else {
+    document.getElementById('presentCard').style.display='block';
+    for (const [k, v] of Object.entries(r.found)){
+      const li = document.createElement('li'); li.className='item';
+      li.innerHTML = `<div style="flex:1">
+                        <div class="title">${v.meta.name}</div>
+                        <div class="meta"><code>${k}</code> — ${v.value}</div>
+                      </div>
+                      <div style="min-width:120px;text-align:right;">
+                        <span class="badge good">present</span>
+                      </div>`;
+      presentList.appendChild(li);
+    }
+  }
+
+  // Missing list
+  const missingList = document.getElementById('missingList');
+  missingList.innerHTML = '';
+  if (missingCount === 0){ document.getElementById('missingCard').style.display='none'; }
+  else {
+    document.getElementById('missingCard').style.display='block';
+    for (const [k, v] of Object.entries(r.missing)){
+      const li = document.createElement('li'); li.className='item';
+      const severity = (v.meta.severity || 'low');
+      let sevClass = 'warn';
+      if (severity === 'high') sevClass = 'bad';
+      if (severity === 'low') sevClass = 'warn';
+      const id = 'det_' + k.replace(/[^a-z0-9]/gi,'_');
+      li.innerHTML = `<div style="flex:1">
+                        <div class="title">${v.meta.name}</div>
+                        <div class="meta"><code>${k}</code></div>
+                        <div id="${id}" class="collapse">
+                          <strong>Description:</strong> ${v.meta.description}<br/>
+                          <strong>Impact:</strong> ${v.meta.impact}<br/>
+                          <strong>Fix:</strong> ${v.meta.remediation}
+                        </div>
+                      </div>
+                      <div style="min-width:120px;text-align:right;">
+                        <span class="badge ${sevClass}">${v.meta.severity || 'low'}</span>
+                      </div>`;
+      li.addEventListener('click', () => {
+        const el = document.getElementById(id);
+        el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+      });
+      missingList.appendChild(li);
+    }
+  }
+
+  // Show action buttons and wire them
+  document.getElementById('reportButtons').style.display = 'flex';
+  postActions.innerHTML = '';
+  const copyBtn = document.getElementById('copyBtn');
+  const downloadTxt = document.getElementById('downloadTxt');
+  const downloadJson = document.getElementById('downloadJson');
+
+  // Build formatted text for clipboard / txt
+  const prettyText = buildPrettyText(r);
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(prettyText);
+      copyBtn.innerHTML = '✅ Copied';
+      setTimeout(()=> copyBtn.innerHTML = '📋 Copy report', 1800);
+    } catch (e) {
+      alert('Copy failed — your browser may block clipboard access.');
+    }
+  };
+
+  downloadTxt.onclick = () => {
+    downloadFile(prettyText, `sec-headers-${safeFilename(r.final_url)}.txt`, 'text/plain');
+  };
+
+  downloadJson.onclick = () => {
+    const j = JSON.stringify(r, null, 2);
+    downloadFile(j, `sec-headers-${safeFilename(r.final_url)}.json`, 'application/json');
+  };
+
+  // show small post actions area (duplicate buttons at right)
+  const frag = document.createDocumentFragment();
+  const el1 = createActionBtn('📋','Copy'); el1.onclick = copyBtn.onclick;
+  const el2 = createActionBtn('📥','TXT'); el2.onclick = downloadTxt.onclick;
+  const el3 = createActionBtn('💾','JSON'); el3.onclick = downloadJson.onclick;
+  frag.appendChild(el1); frag.appendChild(el2); frag.appendChild(el3);
+  postActions.appendChild(frag);
+}
+
+function createActionBtn(icon, label){
+  const d = document.createElement('div'); d.className='icon-btn';
+  d.innerHTML = `<span class="icon">${icon}</span><span style="font-weight:700">${label}</span>`;
+  return d;
+}
+
+function safeFilename(u){
+  return (u || 'report').replace(/https?:\/\//,'').replace(/[^a-z0-9\-_.]/gi,'_').slice(0,80);
+}
+
+function downloadFile(content, filename, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildPrettyText(r){
+  let s = '';
+  s += `Target URL: ${r.final_url}\nHTTP status: ${r.status_code}\n\n`;
+  s += 'Present security headers:\n';
+  if (!r.found || Object.keys(r.found).length===0){
+    s += '  (none of the tracked headers were present)\n';
+  } else {
+    for (const [k,v] of Object.entries(r.found)){
+      s += `  • ${v.meta.name} (${k}) = ${v.value}\n`;
+    }
+  }
+  s += '\nMissing security headers:\n';
+  if (!r.missing || Object.keys(r.missing).length===0){
+    s += '  (none)\n';
+  } else {
+    for (const [k,v] of Object.entries(r.missing)){
+      s += `  • ${v.meta.name} — ${v.meta.description}\n`;
+      s += `      Impact: ${v.meta.impact}\n`;
+      s += `      Fix: ${v.meta.remediation}\n\n`;
+    }
+  }
+  s += 'Set-Cookie headers (raw):\n';
+  if (r.set_cookie && r.set_cookie.length){
+    for (const c of r.set_cookie) s += `  - ${c}\n`;
+  } else s += '  (no Set-Cookie headers detected)\n';
+  return s;
+}
+</script>
+</body>
+</html>
